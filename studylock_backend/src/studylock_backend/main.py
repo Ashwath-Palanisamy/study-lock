@@ -1,5 +1,6 @@
 from fastapi import FastAPI, status, UploadFile, HTTPException
 from google import genai
+from google.genai import types
 import tempfile
 import os
 import asyncio
@@ -48,8 +49,19 @@ async def chat_with_pdf(file_uri: str, question: str):
             ai_client.files.get, name=file_uri
         )
         
+        system_instruction = """
+            You are an expert study assistant and friendly tutor. Your goal is to explain concepts derived from the provided document as clearly as possible.
+            - Break down complex thoughts into simple, digestible terms.
+            - Use the easiest methods, real-world analogies, or step-by-step bullet points to explain questions.
+            - Avoid overly dense academic jargon unless you define it immediately in simple words.
+            """
+
         chat = ai_client.chats.create(
-            model='gemini-3.5-flash'
+            model='gemini-3.5-flash',
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.3, 
+            ),
         )
         
         response = await asyncio.to_thread(
@@ -67,5 +79,8 @@ async def chat_with_pdf(file_uri: str, question: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your chat request. Please try again later."
         )
-        
-        sdasdasdasdas
+
+
+if __name__ == '__main__':
+  port = int(os.environ.get('PORT', 8000))
+  uvicorn.run('main:app', host='0.0.0.0', port=port)

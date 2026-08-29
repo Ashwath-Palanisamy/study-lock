@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:studylock/api/ai_chat_analysis.dart';
+import 'package:studylock/api/ai_chat_and_analysis.dart';
 
 class SelectedFileNotifier extends Notifier<PlatformFile?> {
   void setFile(PlatformFile file) {

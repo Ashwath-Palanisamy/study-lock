@@ -1,10 +1,10 @@
 [project]
 name = "studylock-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backend for studylock app"
 readme = "README.md"
 authors = [
-    { name = "Ashwath", email = "ashwakausi@outlook.com" }
+    { name = "Ashwath", email = "ashwath.palanisamy08@gmail.com" }
 ]
 requires-python = ">=3.14"
 dependencies = [

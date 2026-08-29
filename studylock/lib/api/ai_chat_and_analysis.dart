@@ -26,11 +26,11 @@ class AiChatAnalysis {
     }
   }
 
-  Future<String> chat(String fileUri, String message) async {
+  Future<String> chatAPI(String fileUri, String message) async {
     try {
       final response = await dioClient.post(
         '/chat',
-        data: {'file_uri': fileUri, 'question': message},
+        queryParameters: {'file_uri': fileUri, 'question': message},
       );
 
       // Extract and return ai response

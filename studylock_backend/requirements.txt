@@ -1,0 +1,4 @@
+fastapi
+google-genai
+gunicorn
+uvicorn

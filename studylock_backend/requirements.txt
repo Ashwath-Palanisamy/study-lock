@@ -2,3 +2,4 @@ fastapi
 google-genai
 gunicorn
 uvicorn
+python-dotenv

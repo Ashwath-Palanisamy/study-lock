@@ -5,13 +5,15 @@ import 'package:studylock/components/app_section.dart';
 import 'package:studylock/components/app_text.dart';
 import 'package:studylock/riverpod/ai_chat.dart';
 import 'package:studylock/views/explain_topics_view.dart';
+import 'package:studylock/views/mcq_page_view.dart';
 
 class ChoicePageView extends ConsumerWidget {
   const ChoicePageView({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopScope( // Show warning when leaving the page
+    return PopScope(
+      // Show warning when leaving the page
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
@@ -84,7 +86,14 @@ class ChoicePageView extends ConsumerWidget {
 
                               AppButtons(
                                 child: Text('Test you with MCQs?'),
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const McqPageView(),
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),

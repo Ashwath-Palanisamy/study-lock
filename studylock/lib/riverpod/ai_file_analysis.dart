@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:studylock/api/ai_chat_and_analysis.dart';
+import 'package:studylock/api/ai_functions.dart';
 
 class SelectedFileNotifier extends Notifier<PlatformFile?> {
   void setFile(PlatformFile file) {
@@ -34,7 +34,7 @@ class AiFileAnalysis extends Notifier<String> {
     state = 'Uploading...';
 
     // Call api
-    final aiService = AiChatAnalysis();
+    final aiService = AiFunctions();
     final result = await aiService.uploadfile(file);
 
     state = result;

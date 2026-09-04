@@ -2,11 +2,11 @@ from fastapi import FastAPI, status, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from google import genai
 from google.genai import types
+from google.genai.errors import APIError  
 from pydantic import BaseModel, Field
 from typing import List
 import tempfile
 import os
-import asyncio
 import logging
 import uvicorn
 from dotenv import load_dotenv
@@ -109,7 +109,6 @@ async def chat_with_pdf(file_uri: str, question: str):
             response_stream = await ai_client.aio.models.generate_content_stream(
                 model='gemini-3.6-flash',
                 contents=[
-                    # Fixed: using file_info.uri (string) instead of file_info (object)
                     types.Part.from_uri(file_uri=file_info.uri, mime_type=detected_mime_type),
                     question
                 ],
@@ -124,6 +123,17 @@ async def chat_with_pdf(file_uri: str, question: str):
 
         return StreamingResponse(generate_chunks(), media_type="text/plain")
 
+    except APIError as e:
+        logger.error(f"API Error during chat for {file_uri}: {str(e)}")
+        if e.code == 429 or "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="AI server is busy right now (Rate limit reached). Please try again in a moment."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service temporarily unavailable. Please try again later."
+        )
     except Exception as e:
         logger.error(f"Chat request failed for file_uri {file_uri}: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -162,7 +172,6 @@ async def generate_mcqs(file_uri: str):
         response = await ai_client.aio.models.generate_content(
             model='gemini-3.6-flash',
             contents=[
-                # Fixed: using file_info.uri (string) instead of file_info (object)
                 types.Part.from_uri(file_uri=file_info.uri, mime_type=detected_mime_type),
                 secure_prompt
             ],
@@ -177,6 +186,17 @@ async def generate_mcqs(file_uri: str):
         logger.info("Successfully generated 5 secure MCQs.")
         return response.parsed
 
+    except APIError as e:
+        logger.error(f"Gemini API Error for MCQ generation {file_uri}: {str(e)}")
+        if e.code == 429 or "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Server is busy or your AI quota is temporarily exhausted. Please try again in a few moments."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI model service is busy. Please try again later."
+        )
     except Exception as e:
         logger.error(f"MCQ generation error for file_uri {file_uri}: {str(e)}", exc_info=True)
         raise HTTPException(

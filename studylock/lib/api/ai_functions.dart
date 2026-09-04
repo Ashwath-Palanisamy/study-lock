@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -20,7 +21,9 @@ class AiFunctions {
       return response.data['file_uri'];
     } on DioException catch (e) {
       if (kDebugMode) {
-        debugPrint('DioError during upload: ${e.message}');
+        debugPrint(
+          'DioError during upload: ${e.message}, Response: ${e.response?.data}',
+        );
       }
       return 'file upload error. Please try again';
     }
@@ -31,19 +34,19 @@ class AiFunctions {
       final response = await dioClient.post(
         '/chat',
         queryParameters: {'file_uri': fileUri, 'question': message},
-        options: Options(
-          responseType: ResponseType.stream,
-        ),
+        options: Options(responseType: ResponseType.stream),
       );
 
       ResponseBody responseBody = response.data;
-      
+
       await for (var chunk in responseBody.stream) {
         yield utf8.decode(chunk);
       }
     } on DioException catch (e) {
       if (kDebugMode) {
-        debugPrint('DioError when sending Chat message: ${e.message}');
+        debugPrint(
+          'DioError when sending Chat message: ${e.message}, Response: ${e.response?.data}',
+        );
       }
 
       yield 'Can\'t able to send chat. Check your network connection';
@@ -64,9 +67,12 @@ class AiFunctions {
       return Map<String, dynamic>.from(response.data);
     } on DioException catch (e) {
       if (kDebugMode) {
-        debugPrint('DioError during MCQ generation: ${e.message}');
+        debugPrint(
+          'DioError during MCQ generation: ${e.message}, Data: ${e.response?.data}',
+        );
       }
-      throw Exception('Failed to generate MCQs: ${e.message}');
+
+      throw Exception('Server is busy. Please try again later.');
     }
   }
 }

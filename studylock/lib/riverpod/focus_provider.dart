@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phone_state/phone_state.dart';
-import 'package:flutter_accessibility_service/flutter_accessibility_service.dart';
 import 'package:studylock/models/focus_timer_model.dart';
 import 'package:studylock/services/app_lockdown_service.dart';
 
@@ -39,16 +38,20 @@ class FocusProvider extends Notifier<FocusTimerModel> {
     });
   }
 
-  void startSessionTimer(int minutes, {List<String> restrictedPackages = const []}) async {
+  Future<void> startSessionTimer(
+    int minutes, {
+    List<String> restrictedPackages = const [],
+  }) async {
     _timer?.cancel();
     _phoneStateSubscription?.cancel();
 
     //  Check Android Accessibility Service permission first (Strict Enforcement)
-    bool isAccessibilityEnabled = await FlutterAccessibilityService.isAccessibilityPermissionEnabled();
+    final isAccessibilityEnabled =
+        await AppBlockerService.isAccessibilityServiceEnabled();
     
     if (!isAccessibilityEnabled) {
       // Prompt user to enable accessibility permission
-      await FlutterAccessibilityService.requestAccessibilityPermission();
+      await AppBlockerService.openAccessibilitySettings();
       
       // Abort session startup until permission is granted
       return;
@@ -90,7 +93,7 @@ class FocusProvider extends Notifier<FocusTimerModel> {
         .toList();
 
     // pass the cleaned restricted apps list to the native app blocker service
-    AppBlockerService.startBlocking(finalRestrictedList);
+    await AppBlockerService.startBlocking(finalRestrictedList);
 
     int totalSeconds = minutes * 60;
     state = state.copyWith(

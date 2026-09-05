@@ -1,29 +1,25 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class AppBlockerService {
   // Make sure this matches the channel name defined in MainActivity.kt
   static const platform = MethodChannel('com.example.studylock/blocker');
 
+  static Future<bool> isAccessibilityServiceEnabled() async {
+    return await platform.invokeMethod<bool>('isAccessibilityServiceEnabled') ??
+        false;
+  }
+
+  static Future<void> openAccessibilitySettings() async {
+    await platform.invokeMethod<void>('openAccessibilitySettings');
+  }
+
   static Future<void> startBlocking(List<String> restrictedPackages) async {
-    try {
-      await platform.invokeMethod('startBlocking', {
-        'restrictedPackages': restrictedPackages,
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Error starting app blocker: $e');
-      }
-    }
+    await platform.invokeMethod<bool>('startBlocking', {
+      'restrictedPackages': restrictedPackages,
+    });
   }
 
   static Future<void> stopBlocking() async {
-    try {
-      await platform.invokeMethod('stopBlocking');
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Error stopping app blocker: $e');
-      }
-    }
+    await platform.invokeMethod<void>('stopBlocking');
   }
 }

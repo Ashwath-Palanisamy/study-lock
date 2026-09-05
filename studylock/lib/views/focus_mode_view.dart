@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_accessibility_service/flutter_accessibility_service.dart';
+import 'package:studylock/services/app_lockdown_service.dart';
 import 'package:studylock/components/app_section.dart';
 import 'package:studylock/components/app_text.dart';
 import 'package:studylock/models/focus_timer_model.dart';
@@ -41,7 +41,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView>
 
   Future<void> _checkAccessibilityPermission() async {
     final enabled =
-        await FlutterAccessibilityService.isAccessibilityPermissionEnabled();
+        await AppBlockerService.isAccessibilityServiceEnabled();
     if (mounted) {
       setState(() {
         _isAccessibilityEnabled = enabled;
@@ -108,7 +108,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView>
                             foregroundColor: Colors.white,
                           ),
                           onPressed: () async {
-                            await FlutterAccessibilityService.requestAccessibilityPermission();
+                            await AppBlockerService.openAccessibilitySettings();
                           },
                           icon: const Icon(Icons.settings),
                           label: const Text('Enable Accessibility Service'),

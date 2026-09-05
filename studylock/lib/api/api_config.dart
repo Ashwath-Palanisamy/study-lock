@@ -1,3 +1,3 @@
 import 'package:dio/dio.dart';
 
-final Dio dioClient = Dio(BaseOptions(baseUrl: 'http://10.0.2.2:8000'));
+final Dio dioClient = Dio(BaseOptions(baseUrl: 'https://study-lock-xakx.onrender.com'));

@@ -1,39 +1,28 @@
 package com.example.studylock
 
+import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
-import android.app.ActivityManager
-import android.content.Context
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.studylock"
+class MainActivity: FlutterActivity() {
+    private val CHANNEL = "com.example.studylock/blocker"
 
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine) 
-
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result -> 
+    override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "startLockTask" -> {
-                    try {
-                        startLockTask()
-                        result.success(true)
-                    } catch (e: Exception) {
-                        result.error("UNAVAILABLE", "Failed to start lock task: ${e.message}", null)
-                    }
+                "startBlocking" -> {
+                    val packages = call.argument<List<String>>("restrictedPackages") ?: listOf()
+                    AppBlockerService.restrictedPackages = packages
+                    AppBlockerService.isBlockingEnabled = true
+                    result.success(true)
                 }
-                "stopLockTask" -> {
-                    try {
-                        stopLockTask()
-                        result.success(true)
-                    } catch (e: Exception) {
-                        result.error("UNAVAILABLE", "Failed to stop lock task: ${e.message}", null)
-                    }
-                }
-                "isLocked" -> {
-                    val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-                    val isLocked = activityManager.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
-                    result.success(isLocked)
+                "stopBlocking" -> {
+                    AppBlockerService.isBlockingEnabled = false
+                    AppBlockerService.restrictedPackages = listOf()
+                    result.success(true)
                 }
                 else -> {
                     result.notImplemented()

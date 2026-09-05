@@ -1,4 +1,4 @@
-from fastapi import FastAPI, status, UploadFile, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status, UploadFile
 from fastapi.responses import StreamingResponse
 from google import genai
 from google.genai import types
@@ -8,6 +8,11 @@ from typing import List
 import tempfile
 import os
 import logging
+import hashlib
+import secrets
+import threading
+import time
+from collections import defaultdict, deque
 import uvicorn
 from dotenv import load_dotenv
 
@@ -19,7 +24,68 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-app = FastAPI()
+
+APP_API_KEY = os.getenv("STUDYLOCK_APP_API_KEY")
+if not APP_API_KEY:
+    raise RuntimeError("STUDYLOCK_APP_API_KEY must be configured")
+
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "60"))
+RATE_LIMIT_UPLOADS = int(os.getenv("RATE_LIMIT_UPLOADS", "5"))
+RATE_LIMIT_AI_REQUESTS = int(os.getenv("RATE_LIMIT_AI_REQUESTS", "20"))
+rate_limit_events: dict[str, deque[float]] = defaultdict(deque)
+rate_limit_lock = threading.Lock()
+
+
+def require_app_key(
+    x_studylock_app_key: str | None = Header(default=None),
+) -> None:
+    if not x_studylock_app_key or not secrets.compare_digest(
+        x_studylock_app_key,
+        APP_API_KEY,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid application credentials",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
+
+def enforce_rate_limit(
+    request: Request,
+    x_studylock_app_key: str | None = Header(default=None),
+) -> None:
+    path = request.url.path
+    if path == "/upload-file":
+        limit = RATE_LIMIT_UPLOADS
+    elif path in {"/chat", "/mcq-ai"}:
+        limit = RATE_LIMIT_AI_REQUESTS
+    else:
+        limit = RATE_LIMIT_REQUESTS
+
+    client_host = request.client.host if request.client else "unknown"
+    client_key = hashlib.sha256(
+        f"{client_host}:{x_studylock_app_key}".encode()
+    ).hexdigest()
+    bucket_key = f"{path}:{client_key}"
+    now = time.monotonic()
+    window_start = now - RATE_LIMIT_WINDOW_SECONDS
+
+    with rate_limit_lock:
+        events = rate_limit_events[bucket_key]
+        while events and events[0] <= window_start:
+            events.popleft()
+        if len(events) >= limit:
+            retry_after = max(1, int(events[0] + RATE_LIMIT_WINDOW_SECONDS - now))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded. Please try again later.",
+                headers={"Retry-After": str(retry_after)},
+            )
+        events.append(now)
+
+
+app = FastAPI(dependencies=[Depends(require_app_key), Depends(enforce_rate_limit)])
 ai_client = genai.Client()
 
 

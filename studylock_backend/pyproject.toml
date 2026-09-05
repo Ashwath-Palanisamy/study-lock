@@ -13,11 +13,21 @@ dependencies = [
     "gunicorn>=26.2.0",
     "pypdf>=6.16.2",
     "python-multipart>=0.0.32",
+    "python-dotenv>=1.1.0",
     "uvicorn>=0.52.4",
 ]
 
 [project.scripts]
 studylock-backend = "studylock_backend:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]

@@ -9,6 +9,7 @@ StudyLock is a Flutter study companion for focused study sessions, document-base
 - [Product Requirements Document](docs/PRD.md)
 - [High-Level Design](docs/HLD.md)
 - [Low-Level Design](docs/LLD.md)
+- [License](LICENSE)
 
 ## Repository scope
 

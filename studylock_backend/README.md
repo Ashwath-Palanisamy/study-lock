@@ -1,5 +1,7 @@
 # StudyLock Backend
 
+[License](LICENSE): MIT
+
 ## Configuration
 
 Copy `.env.example` to `.env` for local development and set:

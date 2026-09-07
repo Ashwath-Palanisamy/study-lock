@@ -51,7 +51,6 @@ StudyLock helps students prepare from their own study material and protect a tim
 - Device-owner or enterprise kiosk enforcement.
 - Cross-device session synchronization.
 - Persistent session recovery after process death.
-- Backend implementation and deployment, which are external to this repository.
 
 ## 6. Success metrics
 

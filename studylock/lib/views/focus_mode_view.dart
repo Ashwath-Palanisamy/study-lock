@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:studylock/services/app_lockdown_service.dart';
 import 'package:studylock/components/app_section.dart';
 import 'package:studylock/components/app_text.dart';
+import 'package:studylock/components/focus_mode_stop_alert.dart';
 import 'package:studylock/models/focus_timer_model.dart';
 import 'package:studylock/riverpod/focus_provider.dart';
 
@@ -40,12 +41,51 @@ class _FocusModeViewState extends ConsumerState<FocusModeView>
   }
 
   Future<void> _checkAccessibilityPermission() async {
-    final enabled =
-        await AppBlockerService.isAccessibilityServiceEnabled();
+    final enabled = await AppBlockerService.isAccessibilityServiceEnabled();
     if (mounted) {
       setState(() {
         _isAccessibilityEnabled = enabled;
       });
+    }
+  }
+
+  Future<void> _confirmResetSession() async {
+    final shouldLeave = await showDialog<bool>(
+      context: context,
+      builder: (context) => const FocusModeStopAlert(
+        title: 'Reset focus session?',
+        content: 'Do you want to continue the focus session or leave it?',
+        choice1: 'Continue',
+        choice2: 'Leave',
+      ),
+    );
+
+    if (shouldLeave != true || !mounted) return;
+
+    final shouldLeaveAgain = await showDialog<bool>(
+      context: context,
+      builder: (context) => const FocusModeStopAlert(
+        title: 'Leave focus session?',
+        content: 'Your current progress will be lost if you leave.',
+        choice1: 'Continue',
+        choice2: 'Leave',
+      ),
+    );
+
+    if (shouldLeaveAgain != true || !mounted) return;
+
+    final shouldStop = await showDialog<bool>(
+      context: context,
+      builder: (context) => const FocusModeStopAlert(
+        title: 'Confirm reset',
+        content: 'This is the final confirmation. Stop the timer?',
+        choice1: 'Continue',
+        choice2: 'Leave',
+      ),
+    );
+
+    if (shouldStop == true && mounted) {
+      ref.read(focusProvider.notifier).resetSessionTimer();
     }
   }
 
@@ -175,7 +215,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView>
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () {
-                          ref.read(focusProvider.notifier).resetSessionTimer();
+                          _confirmResetSession();
                         },
                         icon: const Icon(Icons.stop),
                         label: const Text('Reset Session'),

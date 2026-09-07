@@ -61,84 +61,86 @@ class _ExplainTopicsViewState extends ConsumerState<ExplainTopicsView> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ask AI')),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: messages.length + (_isAiThinking ? 1 : 0),
-              padding: const EdgeInsets.all(16),
-              itemBuilder: (context, index) {
-                if (index == messages.length && _isAiThinking) {
-                  return const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4),
-                      child: AiThinkingBubble(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: messages.length + (_isAiThinking ? 1 : 0),
+                padding: const EdgeInsets.all(16),
+                itemBuilder: (context, index) {
+                  if (index == messages.length && _isAiThinking) {
+                    return const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4),
+                        child: AiThinkingBubble(),
+                      ),
+                    );
+                  }
+        
+                  final message = messages[index];
+                  return Align(
+                    alignment: message.isUser
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                      ),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: message.isUser ? Colors.blue : Colors.grey[800],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: message.isUser
+                          ? Text(
+                              message.text,
+                              style: const TextStyle(color: Colors.white),
+                            )
+                          : MarkdownBody(
+                              data: message.text,
+                              styleSheet: MarkdownStyleSheet.fromTheme(
+                                Theme.of(context),
+                              ).copyWith(p: const TextStyle(color: Colors.white)),
+                            ),
                     ),
                   );
-                }
-
-                final message = messages[index];
-                return Align(
-                  alignment: message.isUser
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                    ),
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: message.isUser ? Colors.blue : Colors.grey[800],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: message.isUser
-                        ? Text(
-                            message.text,
-                            style: const TextStyle(color: Colors.white),
-                          )
-                        : MarkdownBody(
-                            data: message.text,
-                            styleSheet: MarkdownStyleSheet.fromTheme(
-                              Theme.of(context),
-                            ).copyWith(p: const TextStyle(color: Colors.white)),
-                          ),
-                  ),
-                );
-              },
+                },
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            color: Theme.of(context).cardColor,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Ask something about the file...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              color: Theme.of(context).cardColor,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(
+                        hintText: 'Ask something about the file...',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
+                      onSubmitted: (_) => _handleSendMessage(),
                     ),
-                    onSubmitted: (_) => _handleSendMessage(),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  color: Colors.blue,
-                  onPressed: _isAiThinking ? null : _handleSendMessage,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    color: Colors.blue,
+                    onPressed: _isAiThinking ? null : _handleSendMessage,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

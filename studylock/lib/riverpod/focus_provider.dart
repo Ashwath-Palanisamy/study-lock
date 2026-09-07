@@ -25,7 +25,7 @@ class FocusProvider extends Notifier<FocusTimerModel> {
       } else {
         timer.cancel();
         HapticFeedback.heavyImpact();
-        
+
         // Stop blocking when the session is completed
         AppBlockerService.stopBlocking();
 
@@ -45,14 +45,14 @@ class FocusProvider extends Notifier<FocusTimerModel> {
     _timer?.cancel();
     _phoneStateSubscription?.cancel();
 
-    //  Check Android Accessibility Service permission first (Strict Enforcement)
+    // Check Android Accessibility Service permission first (Strict Enforcement)
     final isAccessibilityEnabled =
         await AppBlockerService.isAccessibilityServiceEnabled();
-    
+
     if (!isAccessibilityEnabled) {
       // Prompt user to enable accessibility permission
       await AppBlockerService.openAccessibilitySettings();
-      
+
       // Abort session startup until permission is granted
       return;
     }
@@ -79,12 +79,12 @@ class FocusProvider extends Notifier<FocusTimerModel> {
 
     // Define essential allowed apps (Phone, SMS, and StudyLock itself)
     final List<String> safeSystemPackages = [
-      'com.example.studylock',         // StudyLock 
-      'com.android.server.telecom',    // Core Phone Call UI
-      'com.google.android.dialer',     // Google Phone App
-      'com.android.dialer',            // Default Android Dialer
+      'com.example.studylock', // StudyLock
+      'com.android.server.telecom', // Core Phone Call UI
+      'com.google.android.dialer', // Google Phone App
+      'com.android.dialer', // Default Android Dialer
       'com.google.android.apps.messaging', // Google Messages
-      'com.android.mms',               // Default SMS App
+      'com.android.mms', // Default SMS App
     ];
 
     // Filter out safe system apps just in case they were accidentally included
@@ -92,16 +92,17 @@ class FocusProvider extends Notifier<FocusTimerModel> {
         .where((pkg) => !safeSystemPackages.contains(pkg))
         .toList();
 
-    // pass the cleaned restricted apps list to the native app blocker service
-    await AppBlockerService.startBlocking(finalRestrictedList);
-
     int totalSeconds = minutes * 60;
+
+    // Pass the cleaned restricted apps list to the native app blocker service
+    await AppBlockerService.startBlocking(finalRestrictedList, minutes);
+
     state = state.copyWith(
       state: FocusSessionState.focusing,
       remainingSeconds: totalSeconds,
       totalDurationSeconds: totalSeconds,
     );
-    
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.remainingSeconds > 0) {
         state = state.copyWith(remainingSeconds: state.remainingSeconds - 1);
@@ -109,13 +110,13 @@ class FocusProvider extends Notifier<FocusTimerModel> {
       } else {
         timer.cancel();
         HapticFeedback.heavyImpact();
-        
+
         // Stop blocking when the session hits zero
         AppBlockerService.stopBlocking();
 
         state = state.copyWith(
           state: FocusSessionState.idle,
-          remainingSeconds: 0, 
+          remainingSeconds: 0,
           totalDurationSeconds: 0,
         );
       }
@@ -134,8 +135,23 @@ class FocusProvider extends Notifier<FocusTimerModel> {
     AppBlockerService.stopBlocking();
   }
 
+  Future<void> _restoreActiveSession() async {
+    final remainingSeconds = await AppBlockerService.checkActiveSession();
+    if (remainingSeconds > 0) {
+      state = state.copyWith(
+        state: FocusSessionState.focusing,
+        remainingSeconds: remainingSeconds,
+        totalDurationSeconds: remainingSeconds,
+      );
+      _resumeTimer();
+    }
+  }
+
   @override
   build() {
+    // Check native storage asynchronously upon initialization to sync state if app was killed
+    _restoreActiveSession();
+
     return FocusTimerModel(
       state: FocusSessionState.idle,
       remainingSeconds: 0,

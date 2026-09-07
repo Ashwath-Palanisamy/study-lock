@@ -6,12 +6,13 @@ import android.content.Intent
 import android.telecom.TelecomManager
 import android.provider.Telephony
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import android.util.Log
+import android.graphics.Rect
 
 class AppBlockerService : AccessibilityService() {
 
     companion object {
-        var isBlockingEnabled = false
-        var restrictedPackages: List<String> = listOf()
         var instance: AppBlockerService? = null
     }
 
@@ -23,7 +24,6 @@ class AppBlockerService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceInfo = serviceInfo.apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             notificationTimeout = 100
         }
@@ -31,37 +31,123 @@ class AppBlockerService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (!isBlockingEnabled) return
+        if (!isSessionStillActive()) return
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val packageName = event.packageName?.toString() ?: return
-            
-            // Don't trigger if they are already looking at StudyLock
-            if (packageName == "com.example.studylock") return
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        ) {
 
-            // An empty restriction list means strict mode: block every user app
-            // except the current app, the phone app, and the SMS app.
-            if (shouldBlock(packageName)) {
-                val blockIntent = packageManager.getLaunchIntentForPackage("com.example.studylock")?.apply {
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    )
-                    putExtra("is_blocked_attempt", true)
-                }
-                if (blockIntent != null) {
-                    startActivity(blockIntent)
+            // Loop through all active windows currently drawn on the screen
+            for (window in windows) {
+                // Focus on application windows (covers standard apps, split-screen, and floating apps)
+                Log.d("AppBlocker", "Window type: ${window.type}")
+                if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION){
+                    val rootNode = window.root ?: continue
+                    try {
+                        val packageName = rootNode.packageName?.toString() ?: continue
+                        Log.d("AppBlocker", "Window type: ${window.type}, ${packageName}")
+
+                        // Don't trigger if it's StudyLock itself
+                        if (packageName == "com.example.studylock") continue
+
+                        if (shouldBlock(packageName)) {
+                            clickFloatingWindowDismissButton(rootNode)
+
+                            val blockIntent = packageManager.getLaunchIntentForPackage("com.example.studylock")?.apply {
+                                addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                )
+                                putExtra("is_blocked_attempt", true)
+                            }
+                            if (blockIntent != null) {
+                                startActivity(blockIntent)
+                            }
+                            return // Stop checking once a blocked app or overlay is handled
+                        }
+                    } finally {
+                        rootNode.recycle()
+                    }
                 }
             }
         }
     }
 
+    private fun clickFloatingWindowDismissButton(rootNode: AccessibilityNodeInfo): Boolean {
+        val containerBounds = Rect()
+        rootNode.getBoundsInScreen(containerBounds)
+        return clickFloatingWindowDismissButton(rootNode, containerBounds)
+    }
+
+    private fun clickFloatingWindowDismissButton(
+        node: AccessibilityNodeInfo,
+        containerBounds: Rect,
+    ): Boolean {
+        if (isDismissNode(node, containerBounds) &&
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        ) {
+            return true
+        }
+
+        for (index in 0 until node.childCount) {
+            val childNode = node.getChild(index) ?: continue
+            try {
+                if (clickFloatingWindowDismissButton(childNode, containerBounds)) {
+                    return true
+                }
+            } finally {
+                childNode.recycle()
+            }
+        }
+
+        return false
+    }
+
+    private fun isDismissNode(node: AccessibilityNodeInfo, containerBounds: Rect): Boolean {
+        val dismissKeywords = listOf("close", "dismiss", "exit")
+        val description = node.contentDescription?.toString()?.lowercase().orEmpty()
+        val text = node.text?.toString()?.lowercase().orEmpty()
+        val hasDismissKeyword = dismissKeywords.any { keyword ->
+            description.contains(keyword) || text.contains(keyword)
+        }
+
+        if (hasDismissKeyword) {
+            return node.isClickable
+        }
+
+        if (!node.isClickable) return false
+
+        val className = node.className?.toString().orEmpty()
+        val isButtonOrImage = className.endsWith("Button") ||
+                className.endsWith("ImageButton") ||
+                className.endsWith("ImageView")
+        if (!isButtonOrImage) return false
+
+        val nodeBounds = Rect()
+        node.getBoundsInScreen(nodeBounds)
+        val headerBottom = containerBounds.top +
+            (containerBounds.height() * 0.25f).toInt()
+        return nodeBounds.top <= headerBottom && nodeBounds.bottom <= headerBottom
+    }
+
+    private fun isSessionStillActive(): Boolean {
+        val storageFile = applicationContext.getSharedPreferences("UserPreferences", MODE_PRIVATE)
+        val targetEndTime = storageFile.getLong("target_end_time", 0)
+        val currentTime = System.currentTimeMillis()
+        return currentTime < targetEndTime
+    }
+
     private fun shouldBlock(packageName: String): Boolean {
+
+        val packageSharedPreferences = applicationContext.getSharedPreferences("UserPreferences", MODE_PRIVATE)
+        val packagesList =
+            packageSharedPreferences.getStringSet("blocked_packages", emptySet<String>()) ?: emptySet<String>()
+
         if (packageName == packageNameForStudyLock() ||
-        packageName == homePackageName() ||
-        allowedSystemPackages.contains(packageName) ||
-        packageName in launcherPackages()
+            packageName == homePackageName() ||
+            allowedSystemPackages.contains(packageName) ||
+            packageName in launcherPackages()
         ) {
             return false
         }
@@ -72,7 +158,7 @@ class AppBlockerService : AccessibilityService() {
             return false
         }
 
-        return restrictedPackages.isEmpty() || restrictedPackages.contains(packageName)
+        return packagesList.isEmpty() || packagesList.contains(packageName)
     }
 
     private fun packageNameForStudyLock(): String = applicationContext.packageName

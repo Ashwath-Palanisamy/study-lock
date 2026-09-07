@@ -13,9 +13,15 @@ class AppBlockerService {
     await platform.invokeMethod<void>('openAccessibilitySettings');
   }
 
-  static Future<void> startBlocking(List<String> restrictedPackages) async {
+  static Future<int> checkActiveSession() async {
+  final remainingSeconds = await platform.invokeMethod<int>('checkActiveSession');
+  return remainingSeconds ?? 0;
+}
+
+  static Future<void> startBlocking(List<String> restrictedPackages, int sessionDuration) async {
     await platform.invokeMethod<bool>('startBlocking', {
       'restrictedPackages': restrictedPackages,
+      'sessionDuration': sessionDuration,
     });
   }
 

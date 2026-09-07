@@ -104,7 +104,7 @@ class _McqPageViewState extends ConsumerState<McqPageView> {
             ),
         ],
       ),
-      body: Padding(padding: const EdgeInsets.all(16.0), child: _buildBody()),
+      body: SafeArea(child: Padding(padding: const EdgeInsets.all(16.0), child: _buildBody())),
     );
   }
 

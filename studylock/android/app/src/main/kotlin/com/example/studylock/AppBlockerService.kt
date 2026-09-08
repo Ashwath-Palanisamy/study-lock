@@ -39,9 +39,9 @@ class AppBlockerService : AccessibilityService() {
 
             // Loop through all active windows currently drawn on the screen
             for (window in windows) {
-                // Focus on application windows (covers standard apps, split-screen, and floating apps)
+                // Application and overlay windows can both represent the blocked surface.
                 Log.d("AppBlocker", "Window type: ${window.type}")
-                if (window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION){
+                if (isBlockableWindow(window)) {
                     val rootNode = window.root ?: continue
                     try {
                         val packageName = rootNode.packageName?.toString() ?: continue
@@ -57,11 +57,14 @@ class AppBlockerService : AccessibilityService() {
                                 addFlags(
                                     Intent.FLAG_ACTIVITY_NEW_TASK or
                                             Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                                            Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 )
                                 putExtra("is_blocked_attempt", true)
                             }
                             if (blockIntent != null) {
+                                if (shouldUseHomeFallback(window)) {
+                                    performGlobalAction(GLOBAL_ACTION_HOME)
+                                }
                                 startActivity(blockIntent)
                             }
                             return // Stop checking once a blocked app or overlay is handled
@@ -72,6 +75,50 @@ class AppBlockerService : AccessibilityService() {
                 }
             }
         }
+    }
+
+    private fun isBlockableWindow(window: android.view.accessibility.AccessibilityWindowInfo): Boolean {
+        return window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION ||
+                window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY ||
+                window.type == android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+    }
+
+    private fun shouldUseHomeFallback(
+        window: android.view.accessibility.AccessibilityWindowInfo,
+    ): Boolean {
+        if (isPersistentOverlay(window)) return true
+        return isFloatingApplicationWindow(window)
+    }
+
+    private fun isPersistentOverlay(
+        window: android.view.accessibility.AccessibilityWindowInfo,
+    ): Boolean {
+        return window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY ||
+                window.type == android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+    }
+
+    private fun isFloatingApplicationWindow(
+        window: android.view.accessibility.AccessibilityWindowInfo,
+    ): Boolean {
+        if (window.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) {
+            return false
+        }
+        if (window.isInPictureInPictureMode) return true
+
+        val bounds = Rect()
+        window.getBoundsInScreen(bounds)
+        val displayMetrics = resources.displayMetrics
+        val displayWidth = displayMetrics.widthPixels
+        val displayHeight = displayMetrics.heightPixels
+        if (bounds.isEmpty || displayWidth <= 0 || displayHeight <= 0) return false
+
+        // A true freeform container is inset from every display edge. Full-screen
+        // and split-screen windows touch at least one edge of the display.
+        val minimumInset = (displayMetrics.density * 24f).toInt()
+        return bounds.left >= minimumInset &&
+                bounds.top >= minimumInset &&
+                displayWidth - bounds.right >= minimumInset &&
+                displayHeight - bounds.bottom >= minimumInset
     }
 
     private fun clickFloatingWindowDismissButton(rootNode: AccessibilityNodeInfo): Boolean {

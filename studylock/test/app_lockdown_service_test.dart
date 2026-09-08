@@ -80,6 +80,38 @@ void main() {
     });
   });
 
+  test('starts blocking with an empty package list', () async {
+    await AppBlockerService.startBlocking([], 1);
+    expect(calls.single.method, 'startBlocking');
+    expect(calls.single.arguments, {
+      'restrictedPackages': <String>[],
+      'sessionDuration': 1,
+    });
+  });
+
+  test('propagates a native accessibility-disabled error', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          throw PlatformException(
+            code: 'ACCESSIBILITY_DISABLED',
+            message: 'Enable StudyLock app blocker first.',
+          );
+        });
+
+    expect(
+      () => AppBlockerService.startBlocking(['com.example.distraction'], 45),
+      throwsA(
+        isA<PlatformException>().having(
+          (error) => error.code,
+          'code',
+          'ACCESSIBILITY_DISABLED',
+        ),
+      ),
+    );
+    expect(calls.single.method, 'startBlocking');
+  });
+
   test('stops blocking', () async {
     await AppBlockerService.stopBlocking();
     expect(calls.single.method, 'stopBlocking');

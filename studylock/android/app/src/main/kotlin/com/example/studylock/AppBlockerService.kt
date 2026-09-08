@@ -40,12 +40,10 @@ class AppBlockerService : AccessibilityService() {
             // Loop through all active windows currently drawn on the screen
             for (window in windows) {
                 // Application and overlay windows can both represent the blocked surface.
-                Log.d("AppBlocker", "Window type: ${window.type}")
                 if (isBlockableWindow(window)) {
                     val rootNode = window.root ?: continue
                     try {
                         val packageName = rootNode.packageName?.toString() ?: continue
-                        Log.d("AppBlocker", "Window type: ${window.type}, ${packageName}")
 
                         // Don't trigger if it's StudyLock itself
                         if (packageName == "com.example.studylock") continue

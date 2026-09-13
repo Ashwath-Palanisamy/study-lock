@@ -71,20 +71,26 @@ void main() {
     expect(calls.single.method, 'openAccessibilitySettings');
   });
 
-  test('starts blocking with the requested packages', () async {
-    await AppBlockerService.startBlocking(['com.example.distraction'], 45);
+  test('starts blocking with the requested packages and safe system packages', () async {
+    await AppBlockerService.startBlocking(
+      ['com.example.distraction'],
+      45,
+      ['com.android.documentsui'],
+    );
     expect(calls.single.method, 'startBlocking');
     expect(calls.single.arguments, {
       'restrictedPackages': ['com.example.distraction'],
+      'safeSystemPackages': ['com.android.documentsui'],
       'sessionDuration': 45,
     });
   });
 
-  test('starts blocking with an empty package list', () async {
-    await AppBlockerService.startBlocking([], 1);
+  test('starts blocking with an empty package list and safe system packages', () async {
+    await AppBlockerService.startBlocking([], 1, []);
     expect(calls.single.method, 'startBlocking');
     expect(calls.single.arguments, {
       'restrictedPackages': <String>[],
+      'safeSystemPackages': <String>[],
       'sessionDuration': 1,
     });
   });
@@ -100,7 +106,11 @@ void main() {
         });
 
     expect(
-      () => AppBlockerService.startBlocking(['com.example.distraction'], 45),
+      () => AppBlockerService.startBlocking(
+        ['com.example.distraction'],
+        45,
+        [],
+      ),
       throwsA(
         isA<PlatformException>().having(
           (error) => error.code,

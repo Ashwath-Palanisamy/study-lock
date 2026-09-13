@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
 class AppBlockerService {
-  // Make sure this matches the channel name defined in MainActivity.kt
+  
   static const platform = MethodChannel('com.example.studylock/blocker');
 
   static Future<bool> isAccessibilityServiceEnabled() async {
@@ -14,13 +14,18 @@ class AppBlockerService {
   }
 
   static Future<int> checkActiveSession() async {
-  final remainingSeconds = await platform.invokeMethod<int>('checkActiveSession');
-  return remainingSeconds ?? 0;
-}
+    final remainingSeconds = await platform.invokeMethod<int>('checkActiveSession');
+    return remainingSeconds ?? 0;
+  }
 
-  static Future<void> startBlocking(List<String> restrictedPackages, int sessionDuration) async {
+  static Future<void> startBlocking(
+    List<String> restrictedPackages,
+    int sessionDuration,
+    List<String> safeSystemPackages,
+  ) async {
     await platform.invokeMethod<bool>('startBlocking', {
       'restrictedPackages': restrictedPackages,
+      'safeSystemPackages': safeSystemPackages, 
       'sessionDuration': sessionDuration,
     });
   }

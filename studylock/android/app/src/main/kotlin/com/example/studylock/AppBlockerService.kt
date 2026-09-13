@@ -10,6 +10,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.util.Log
 import android.graphics.Rect
 
+
 class AppBlockerService : AccessibilityService() {
 
     companion object {
@@ -25,6 +26,7 @@ class AppBlockerService : AccessibilityService() {
         super.onServiceConnected()
         serviceInfo = serviceInfo.apply {
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             notificationTimeout = 100
         }
         instance = this
@@ -49,6 +51,7 @@ class AppBlockerService : AccessibilityService() {
                         if (packageName == "com.example.studylock") continue
 
                         if (shouldBlock(packageName)) {
+                            Log.d("app", packageName)
                             clickFloatingWindowDismissButton(rootNode)
 
                             val blockIntent = packageManager.getLaunchIntentForPackage("com.example.studylock")?.apply {
@@ -184,14 +187,14 @@ class AppBlockerService : AccessibilityService() {
     }
 
     private fun shouldBlock(packageName: String): Boolean {
-
         val packageSharedPreferences = applicationContext.getSharedPreferences("UserPreferences", MODE_PRIVATE)
-        val packagesList =
-            packageSharedPreferences.getStringSet("blocked_packages", emptySet<String>()) ?: emptySet<String>()
+        val packagesList = packageSharedPreferences.getStringSet("blocked_packages", emptySet<String>()) ?: emptySet<String>()
+        val dynamicSafePackages = packageSharedPreferences.getStringSet("safe_system_packages", emptySet<String>()) ?: emptySet<String>()
 
+        // Universal safety bypasses including packages dynamically passed from Flutter
         if (packageName == packageNameForStudyLock() ||
             packageName == homePackageName() ||
-            allowedSystemPackages.contains(packageName) ||
+            dynamicSafePackages.contains(packageName) ||
             packageName in launcherPackages()
         ) {
             return false
@@ -232,12 +235,6 @@ class AppBlockerService : AccessibilityService() {
             },
             android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
         )?.activityInfo?.packageName
-
-    private val allowedSystemPackages = setOf(
-        "android",
-        "com.android.systemui",
-        "com.android.settings",
-    )
 
     override fun onInterrupt() {}
 

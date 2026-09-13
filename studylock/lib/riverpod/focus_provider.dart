@@ -85,6 +85,8 @@ class FocusProvider extends Notifier<FocusTimerModel> {
       'com.android.dialer', // Default Android Dialer
       'com.google.android.apps.messaging', // Google Messages
       'com.android.mms', // Default SMS App
+      'com.android.documentsui',
+      'com.google.android.documentsui',
     ];
 
     // Filter out safe system apps just in case they were accidentally included
@@ -94,8 +96,8 @@ class FocusProvider extends Notifier<FocusTimerModel> {
 
     int totalSeconds = minutes * 60;
 
-    // Pass the cleaned restricted apps list to the native app blocker service
-    await AppBlockerService.startBlocking(finalRestrictedList, minutes);
+   
+    await AppBlockerService.startBlocking(finalRestrictedList, minutes, safeSystemPackages);
 
     state = state.copyWith(
       state: FocusSessionState.focusing,

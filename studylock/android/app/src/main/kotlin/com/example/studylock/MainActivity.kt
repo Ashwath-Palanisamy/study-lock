@@ -34,7 +34,9 @@ class MainActivity : FlutterActivity() {
 
                 "startBlocking" -> {
                     val packages = call.argument<List<String>>("restrictedPackages") ?: listOf()
+                    val safePackages = call.argument<List<String>>("safeSystemPackages") ?: listOf()
                     val durationInMinutes = call.argument<Int>("sessionDuration") ?: 0
+                    
                     if (!isAppBlockerEnabled()) {
                         result.error(
                             "ACCESSIBILITY_DISABLED",
@@ -47,15 +49,18 @@ class MainActivity : FlutterActivity() {
                     val calculatedTime = System.currentTimeMillis() + (durationInMinutes * 60 * 1000)
                     val checkSessionStatus = applicationContext.getSharedPreferences("UserPreferences", MODE_PRIVATE)
                     val sessionEditor = checkSessionStatus.edit()
-                    sessionEditor.putStringSet("blocked_packages", packages.toSet()).apply()
+                    sessionEditor.putStringSet("blocked_packages", packages.toSet())
+                    sessionEditor.putStringSet("safe_system_packages", safePackages.toSet())
                     sessionEditor.putLong("target_end_time", calculatedTime).apply()
+                    
                     result.success(true)
                 }
 
                 "stopBlocking" -> {
                     val checkSessionStatus = applicationContext.getSharedPreferences("UserPreferences", MODE_PRIVATE)
                     val sessionEditor = checkSessionStatus.edit()
-                    sessionEditor.putStringSet("blocked_packages",emptySet<String>()).apply()
+                    sessionEditor.putStringSet("blocked_packages", emptySet<String>())
+                    sessionEditor.putStringSet("safe_system_packages", emptySet<String>())
                     sessionEditor.putLong("target_end_time", 0).apply()
                     
                     result.success(true)
